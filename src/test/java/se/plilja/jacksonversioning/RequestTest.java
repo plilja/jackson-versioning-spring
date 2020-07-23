@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class RequestTest {
@@ -103,12 +103,10 @@ class RequestTest {
     }
 
     @Test
-    void getIllegalApiVersion() throws Exception {
-        try {
+    void getIllegalApiVersion() {
+        HttpStatusCodeException ex = assertThrows(HttpStatusCodeException.class, () -> {
             restTemplate.getForObject("http://localhost:{port}/cars?API_VERSION=UNKNOWN", Car[].class, port);
-            fail("Expected exception before reaching here");
-        } catch (HttpStatusCodeException ex) {
-            assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-        }
+        });
+        assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
 }
