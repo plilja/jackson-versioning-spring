@@ -24,10 +24,10 @@ package se.plilja.jacksonversioning;
 
 import org.springframework.context.ApplicationContext;
 
-public class ApplicationContextConverterRepository<V> implements VersionedConverterRepository<V> {
+class ApplicationContextConverterRepository<V> implements VersionedConverterRepository<V> {
     private final ApplicationContext applicationContext;
 
-    public ApplicationContextConverterRepository(ApplicationContext applicationContext) {
+    ApplicationContextConverterRepository(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
 

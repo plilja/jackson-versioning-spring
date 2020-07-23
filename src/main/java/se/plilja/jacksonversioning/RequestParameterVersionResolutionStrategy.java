@@ -31,12 +31,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
 
-
-public class RequestParameterVersionResolutionStrategy<V extends Comparable<V>> implements VersionResolutionStrategy<V> {
+class RequestParameterVersionResolutionStrategy<V extends Comparable<V>> implements VersionResolutionStrategy<V> {
     private final String requestParameterName;
     private final VersionsDescription<V> versionsDescription;
 
-    public RequestParameterVersionResolutionStrategy(String requestParameterName, VersionsDescription<V> versionsDescription) {
+    RequestParameterVersionResolutionStrategy(String requestParameterName, VersionsDescription<V> versionsDescription) {
         this.requestParameterName = requestParameterName;
         this.versionsDescription = versionsDescription;
     }
