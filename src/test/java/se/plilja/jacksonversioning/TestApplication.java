@@ -38,9 +38,10 @@ public class TestApplication {
 
     @Bean
     ObjectMapper objectMapper(ApplicationContext applicationContext) {
-        EnumVersionsDescription<ApiVersion> versionsDescription = new EnumVersionsDescription<>(ApiVersion.class);
-        SpringContextConverterRepository<ApiVersion> converterRepository = new SpringContextConverterRepository<>(applicationContext);
-        RequestParameterVersionResolutionStrategy<ApiVersion> versionResolutionStrategy = new RequestParameterVersionResolutionStrategy<>("API_VERSION", versionsDescription);
-        return new ObjectMapper().registerModule(new VersioningModule(versionsDescription, converterRepository, versionResolutionStrategy));
+        VersioningModule versioningModule = SpringVersioningModuleBuilder.withEnumVersions(ApiVersion.class)
+                .withVersionDeterminedByRequestParameter("API_VERSION")
+                .withConvertersFromApplicationContext(applicationContext)
+                .build();
+        return new ObjectMapper().registerModule(versioningModule);
     }
 }
