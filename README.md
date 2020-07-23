@@ -1,2 +1,2 @@
-# spring-loading-caffeine
-A way to use Caffeine loading caches in a reususable Spring like fashion.
+# jackson-versioning-spring
+Spring MVC bindings for [jackson-versioning](https://github.com/plilja/jackson-versioning).
