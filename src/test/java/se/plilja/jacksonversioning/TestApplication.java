@@ -22,26 +22,14 @@
  */
 package se.plilja.jacksonversioning;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 
-@ComponentScan("se.plilja.jacksonversioning")
+@Import({CarConverter.class, PersonConverter.class})
 @SpringBootApplication
 public class TestApplication {
     public static void main(String[] args) {
         SpringApplication.run(TestApplication.class, args);
-    }
-
-    @Bean
-    ObjectMapper objectMapper(ApplicationContext applicationContext) {
-        VersioningModule versioningModule = SpringVersioningModuleBuilder.withEnumVersions(ApiVersion.class)
-                .withVersionDeterminedByRequestParameter("API_VERSION")
-                .withConvertersFromApplicationContext(applicationContext)
-                .build();
-        return new ObjectMapper().registerModule(versioningModule);
     }
 }

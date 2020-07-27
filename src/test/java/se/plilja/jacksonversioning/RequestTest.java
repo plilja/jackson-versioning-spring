@@ -27,9 +27,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +38,12 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class RequestTest {
+abstract class RequestTest {
 
     private TypeReference<HashMap<String, Object>> mapTypeReference = new TypeReference<HashMap<String, Object>>() {
     };
@@ -63,39 +63,45 @@ class RequestTest {
         carController.reset();
     }
 
+    private static Stream<Arguments> getHistoricApiVersion() {
+        return Stream.of(
+                Arguments.of(ApiVersion.V1, "{\"id\":1,\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}"),
+                Arguments.of(ApiVersion.V2, "{\"id\":1,\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}"),
+                Arguments.of(ApiVersion.V3, "{\"id\":1,\"make\":\"Toyota\",\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"}}")
+        );
+    }
+
+    protected abstract <T> T get(String url, String apiVersion, Class<T> returnType);
+
+    protected abstract <T> ResponseEntity<T> post(String url, Object body, String apiVersion, Class<T> returnType);
+
     @ParameterizedTest
-    @ValueSource(strings = {
-            "V1|{\"id\":1,\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}",
-            "V2|{\"id\":1,\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}",
-            "V3|{\"id\":1,\"make\":\"Toyota\",\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"}}",
-    })
-    void getHistoricApiVersion(String parameters) throws Exception {
-        String[] args = parameters.split("\\|");
-        String version = args[0];
-        String expectedMapString = args[1];
-        Map<String, Object> actual = restTemplate.getForObject("http://localhost:{port}/cars/1?API_VERSION={version}", Map.class, port, version);
+    @MethodSource
+    void getHistoricApiVersion(ApiVersion version, String expectedMapString) throws Exception {
+        Map<String, Object> actual = get(String.format("http://localhost:%d/cars/1", port), version.toString(), Map.class);
         Map<String, Object> expected = objectMapper.readValue(expectedMapString, mapTypeReference);
         assertEquals(expected, actual);
     }
 
+    private static Stream<Arguments> postHistoricApiVersion() {
+        return Stream.of(
+                Arguments.of(ApiVersion.V1, "{\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}"),
+                Arguments.of(ApiVersion.V2, "{\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}"),
+                Arguments.of(ApiVersion.V3, "{\"make\":\"Toyota\",\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"}}")
+        );
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {
-            "V1|{\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}",
-            "V2|{\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"},\"company\":\"Toyota\"}",
-            "V3|{\"make\":\"Toyota\",\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"}}",
-    })
-    void postHistoricApiVersion(String parameters) throws Exception {
+    @MethodSource
+    void postHistoricApiVersion(ApiVersion version, String requestMapString) throws Exception {
         String expectedMapString = "{\"make\":\"Toyota\",\"model\":\"Camry\",\"yearMade\":2020,\"owner\":{\"socialSecurityNumber\":\"1234567890\",\"firstName\":\"Sten\",\"lastName\":\"Frisk\"}}";
-        String[] args = parameters.split("\\|");
-        String version = args[0];
-        String requestMapString = args[1];
         Map<String, Object> request = objectMapper.readValue(requestMapString, mapTypeReference);
-        ResponseEntity<Map> postResponse = restTemplate.postForEntity("http://localhost:{port}/cars?API_VERSION={version}", request, Map.class, port, version);
+        ResponseEntity<Map> postResponse = post(String.format("http://localhost:%d/cars", port), request, version.toString(), Map.class);
 
         Object id = postResponse.getBody().remove("id");
         assertEquals(request, postResponse.getBody());
 
-        Map<String, Object> getResponse = restTemplate.getForObject("http://localhost:{port}/cars/{id}?API_VERSION=V3", Map.class, port, id);
+        Map<String, Object> getResponse = get(String.format("http://localhost:%d/cars/%s", port, id), ApiVersion.V3.toString(), Map.class);
         Map<String, Object> expected = objectMapper.readValue(expectedMapString, mapTypeReference);
         expected.put("id", id);
 
@@ -105,7 +111,7 @@ class RequestTest {
     @Test
     void getIllegalApiVersion() {
         HttpStatusCodeException ex = assertThrows(HttpStatusCodeException.class, () -> {
-            restTemplate.getForObject("http://localhost:{port}/cars?API_VERSION=UNKNOWN", Car[].class, port);
+            get(String.format("http://localhost:%d/cars", port), "UNKNOWN", Car[].class);
         });
         assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
     }
