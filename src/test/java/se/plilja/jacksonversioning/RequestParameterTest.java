@@ -25,6 +25,7 @@ package se.plilja.jacksonversioning;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
@@ -36,10 +37,10 @@ class RequestParameterTest extends RequestTest {
     @TestConfiguration
     static class TestConfig {
         @Bean
-        ObjectMapper requestParameterObjectMapper() {
+        ObjectMapper requestParameterObjectMapper(ApplicationContext applicationContext) {
             VersioningModule versioningModule = SpringVersioningModuleBuilder.withEnumVersions(ApiVersion.class)
                     .withVersionDeterminedByRequestParameter("API_VERSION")
-                    .withConvertersCreatedByReflection()
+                    .withConvertersFromApplicationContext(applicationContext)
                     .build();
             return new ObjectMapper().registerModule(versioningModule);
         }
